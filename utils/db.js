@@ -1,31 +1,39 @@
-const MongoClient = require('mongodb').MongoClient;
+import { MongoClient } from 'mongodb';
 
 class DBClient {
 	constructor() {
-		const host = process.env.DB_HOST || 'localhost';
-		const port = process.env.DB_PORT || 27017;
-		const dbName = process.env.DB_DATABASE || 'files_manager';
-		const url = `mongodb://${host}:${port}`;
-		const client = new MongoClient(url);
-		client.connect();
-		const db = client.db(dbName);
-		const userCollection = db.collection('users');
-		const filesCollection = db.collection('files');
+		this.host = process.env.DB_HOST || 'localhost';
+		this.port = process.env.DB_PORT || 27017;
+		this.dbName = process.env.DB_DATABASE || 'files_manager';
+		this.url = `mongodb://${this.host}:${this.port}`;
+		this.client = new MongoClient(this.url, { useUnifiedTopology: true });
+		this.init();
+	}
+
+	async init() {
+		try {
+			await this.client.connect();
+			console.log('database connected')
+			this.db = this.client.db(this.dbName);
+		} catch (error) {
+			console.log(error);
+		}
 	}
 
 	isAlive() {
-		this.client.on('connect', () => {return true});
-		this.client.on('error', () => {return false});
+		return this.client.isConnected();
 	}
 
 	async nbUsers() {
-		const findResult = await this.userCollection.find({}).toArray();
-		return findResult.length;
+		if (!this.db) throw new Error('Database not Connected');
+		const usersCollection = await this.db().collection('users');
+		return usersCollection.countDocuments();
 	}
 
 	async nbFiles() {
-		const result = await this.filesCollection.find({}).toArray();
-		return result.length;
+		if (!this.db) throw new Error('Database not Connected');
+		const filesCollection = await this.db().collection('files');
+		return filesCollection.countDocuments();
 	}
 }
 
